@@ -112,7 +112,7 @@ public class RingBuffer {
                         //pReadLock.writeLock().unlock();
                         return  lastRead;
                     }else{
-                        //System.out.println(module + ": Read Over Time and no data to read");
+                        System.out.println(module + ": Read Over Time and no data to read");
                         //pReadLock.writeLock().unlock();
                         return -1;
                     }

@@ -11,16 +11,15 @@ import javafx.stage.Stage;
 import javafx.stage.WindowEvent;
 
 public class Main extends Application {
-    public int status;
+
     @Override
     public void start(Stage primaryStage) throws Exception{
         FXMLLoader fxmlLoader = new FXMLLoader(getClass().getResource("views/MainWindow.fxml"));
         Parent root = fxmlLoader.load();
         Scene scene = new Scene(root, 500, 400);
         BtnVboxController controller = fxmlLoader.getController();//获取controller实例对象
-        Status status = new Status();
-        status.setStatus(1);
-        controller.setStatus(status);
+
+        controller.setStatus(1);
         primaryStage.setScene(scene);
         primaryStage.setTitle("DAQ");
         primaryStage.setOnCloseRequest(new EventHandler<WindowEvent>() {
