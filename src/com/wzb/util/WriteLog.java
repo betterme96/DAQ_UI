@@ -1,4 +1,4 @@
-package com.wzb.helper;
+package com.wzb.util;
 
 import java.io.File;
 import java.io.FileOutputStream;

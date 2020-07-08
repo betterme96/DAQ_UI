@@ -10,48 +10,68 @@
 
 <AnchorPane maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" nodeOrientation="LEFT_TO_RIGHT" prefHeight="400.0" prefWidth="500.0" style="-fx-background-color: white;" xmlns="http://javafx.com/javafx/11.0.1" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.wzb.controller.BtnVboxController">
    <children>
-      <HBox prefHeight="250.0" prefWidth="500.0" spacing="20.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="10.0">
+      <VBox alignment="TOP_CENTER" prefHeight="200.0" prefWidth="100.0" spacing="20.0" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="10.0">
          <children>
-            <VBox alignment="TOP_CENTER" prefHeight="300.0" prefWidth="200.0" spacing="20.0">
+            <HBox alignment="TOP_CENTER" prefHeight="150.0" prefWidth="300.0" spacing="40.0">
                <children>
-                  <Button fx:id="btn_init" mnemonicParsing="false" onAction="#initEventButton" prefHeight="40.0" prefWidth="135.0" text="initialize" />
-                  <Button fx:id="btn_config" mnemonicParsing="false" onAction="#configEventButton" prefHeight="40.0" prefWidth="135.0" text="configure" />
-                  <Button fx:id="btn_start" mnemonicParsing="false" onAction="#startEventButton" prefHeight="40.0" prefWidth="135.0" text="start" />
-                  <Button fx:id="btn_stop" mnemonicParsing="false" onAction="#stopEventButton" prefHeight="40.0" prefWidth="135.0" text="stop" />
-                  <Button fx:id="btn_unconfig" mnemonicParsing="false" onAction="#unconfigEventButton" prefHeight="40.0" prefWidth="135.0" text="unconfig" />
-                  <Button fx:id="btn_uninit" mnemonicParsing="false" onAction="#uninitEventButton" prefHeight="40.0" prefWidth="135.0" text="uninit" />
+                  <VBox prefHeight="200.0" prefWidth="140.0" spacing="20.0">
+                     <children>
+                        <Button fx:id="btn_init" mnemonicParsing="false" onAction="#initEventButton" prefHeight="40.0" prefWidth="140.0" text="initialize" />
+                        <Button fx:id="btn_config" mnemonicParsing="false" onAction="#configEventButton" prefHeight="40.0" prefWidth="135.0" text="configure" />
+                        <Button fx:id="btn_start" mnemonicParsing="false" onAction="#startEventButton" prefHeight="40.0" prefWidth="135.0" text="start" />
+                     </children>
+                  </VBox>
+                  <VBox prefHeight="200.0" prefWidth="140.0" spacing="20.0">
+                     <children>
+                        <Button fx:id="btn_uninit" mnemonicParsing="false" onAction="#uninitEventButton" prefHeight="40.0" prefWidth="135.0" text="uninit" />
+                        <Button fx:id="btn_unconfig" mnemonicParsing="false" onAction="#unconfigEventButton" prefHeight="40.0" prefWidth="135.0" text="unconfig" />
+                        <Button fx:id="btn_stop" mnemonicParsing="false" onAction="#stopEventButton" prefHeight="40.0" prefWidth="135.0" text="stop" />
+                     </children>
+                  </VBox>
+               </children>
+               <padding>
+                  <Insets bottom="10.0" top="10.0" />
+               </padding>
+            </HBox>
+            <VBox alignment="CENTER" prefHeight="101.0" prefWidth="370.0" spacing="10.0">
+               <children>
+                  <HBox alignment="TOP_CENTER" prefHeight="100.0" prefWidth="200.0" spacing="10.0">
+                     <children>
+                        <Label contentDisplay="BOTTOM" prefHeight="27.0" prefWidth="120.0" text="Control  State" textAlignment="JUSTIFY" />
+                        <Label fx:id="label_control_state" prefHeight="27.0" prefWidth="187.0" text="WAITING" />
+                     </children>
+                  </HBox>
+                  <HBox alignment="TOP_CENTER" prefHeight="100.0" prefWidth="200.0" spacing="10.0">
+                     <children>
+                        <Label contentDisplay="BOTTOM" prefHeight="27.0" prefWidth="120.0" text="Run  Number" textAlignment="JUSTIFY" />
+                        <TextField fx:id="text_run_number" alignment="CENTER_RIGHT" editable="false" prefHeight="27.0" prefWidth="185.0" />
+                     </children>
+                  </HBox>
+                  <HBox alignment="TOP_CENTER" prefHeight="100.0" prefWidth="200.0" spacing="10.0">
+                     <children>
+                        <Label prefHeight="27.0" prefWidth="120.0" text="Run  Start  Time" textAlignment="JUSTIFY" />
+                        <TextField fx:id="text_start_time" alignment="CENTER_RIGHT" editable="false" prefHeight="27.0" prefWidth="185.0" />
+                     </children>
+                  </HBox>
+                  <HBox alignment="TOP_CENTER" prefHeight="100.0" prefWidth="200.0" spacing="10.0">
+                     <children>
+                        <Label prefHeight="27.0" prefWidth="120.0" text="Run  Stop  Time" textAlignment="JUSTIFY" />
+                        <TextField fx:id="text_stop_time" alignment="CENTER_RIGHT" editable="false" prefHeight="27.0" prefWidth="185.0" />
+                     </children>
+                  </HBox>
+                  <HBox alignment="TOP_CENTER" prefHeight="100.0" prefWidth="200.0" spacing="10.0">
+                     <children>
+                        <Label contentDisplay="BOTTOM" prefHeight="27.0" prefWidth="120.0" text="Run  Active  Time" textAlignment="JUSTIFY" />
+                        <TextField fx:id="text_active_time" alignment="CENTER_RIGHT" editable="false" prefHeight="27.0" prefWidth="185.0" promptText="00:00:00" />
+                     </children>
+                  </HBox>
                </children>
                <padding>
                   <Insets bottom="10.0" top="10.0" />
                </padding>
             </VBox>
-            <VBox prefHeight="100.0" prefWidth="300.0" spacing="10.0">
-               <children>
-                  <HBox prefHeight="100.0" prefWidth="200.0" spacing="10.0">
-                     <children>
-                        <Label alignment="BASELINE_RIGHT" prefHeight="27.0" prefWidth="82.0" text="Start Time  :" textAlignment="JUSTIFY" />
-                        <TextField fx:id="text_start_time" editable="false" prefHeight="27.0" prefWidth="185.0" />
-                     </children>
-                  </HBox>
-                  <HBox prefHeight="100.0" prefWidth="200.0" spacing="10.0">
-                     <children>
-                        <Label alignment="BASELINE_RIGHT" prefHeight="27.0" prefWidth="82.0" text="Stop Time  :" textAlignment="JUSTIFY" />
-                        <TextField fx:id="text_stop_time" editable="false" prefHeight="27.0" prefWidth="185.0" />
-                     </children>
-                  </HBox>
-                  <HBox prefHeight="100.0" prefWidth="200.0" spacing="10.0">
-                     <children>
-                        <Label alignment="BASELINE_RIGHT" prefHeight="27.0" prefWidth="82.0" text="Active Time  :" textAlignment="JUSTIFY" />
-                        <TextField fx:id="text_active_time" editable="false" prefHeight="27.0" prefWidth="185.0" />
-                     </children>
-                  </HBox>
-               </children>
-               <HBox.margin>
-                  <Insets bottom="150.0" top="10.0" />
-               </HBox.margin>
-            </VBox>
          </children>
-      </HBox>
+      </VBox>
    </children>
    <padding>
       <Insets bottom="20.0" left="20.0" right="20.0" top="10.0" />

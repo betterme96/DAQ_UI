@@ -1,18 +1,20 @@
 package com.wzb.controller;
 
-import com.wzb.helper.RingBuffer;
-import com.wzb.helper.Time;
-import com.wzb.helper.WriteLog;
+import com.wzb.util.RingBuffer;
+import com.wzb.util.Time;
+import com.wzb.util.WriteLog;
 import com.wzb.service.Builder;
 import com.wzb.service.Config;
 import com.wzb.service.ReadOut;
 import com.wzb.service.Store;
 import javafx.fxml.FXML;
+import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
 
 import java.io.*;
 import java.net.Socket;
 import java.text.ParseException;
+import java.util.Timer;
 
 public class BtnVboxController {
     /*
@@ -36,6 +38,10 @@ public class BtnVboxController {
     private TextField text_stop_time;
     @FXML
     private TextField text_active_time;
+    @FXML
+    private Label label_control_state;
+    @FXML
+    private TextField text_run_number;
 
     /*
      * DAQ运行状态
@@ -44,7 +50,7 @@ public class BtnVboxController {
      * configed：3，向电子学发送配置成功
      * running：4，DAQ系统接收到start命令，模块线程开始工作，进行取数
      */
-    private int status;
+    private int status = 1;
 
     //各个模块
     private Socket socket;
@@ -58,12 +64,10 @@ public class BtnVboxController {
 
     //run number文件
     private File runNumFile;
-
     private int curRunNum;
 
-    public void setStatus(int status) {
-        this.status = status;
-    }
+    //active time控件
+    Timer activeTimer;
 
     public void initEventButton() throws IOException {
         if(status == 1){
@@ -87,8 +91,17 @@ public class BtnVboxController {
             runLogFile = new WriteLog();
             runNumFile = new File("./daqFile/curRunNumber.txt");
 
+            //get run number
+            FileInputStream fileIn = new FileInputStream(runNumFile);
+            BufferedReader runNumIn = new BufferedReader(new InputStreamReader(fileIn));
+            curRunNum = Integer.parseInt(runNumIn.readLine());//read run number
+            fileIn.close();
+            runNumIn.close();
+
             //change DAQ status
             status = 2;
+            text_run_number.setText(String.valueOf(curRunNum));
+            label_control_state.setText("INITIALIZED");
             System.out.println("init sunc!! ");
         }else{
             System.out.println("illegal op!!");
@@ -101,7 +114,8 @@ public class BtnVboxController {
             config.sendEDConfig();
             //change DAQ status
             status = 3 ;
-            System.out.println("config sunc!! ");
+            label_control_state.setText("CONFIGED");
+            //System.out.println("config sunc!! ");
         }else if(status == 1){
             System.out.println("please init first");
         }else{
@@ -110,16 +124,16 @@ public class BtnVboxController {
     }
     public void startEventButton() throws IOException, InterruptedException {
         if(status == 3){
-            //get run number file
-            FileInputStream fileIn = new FileInputStream(runNumFile);
-            BufferedReader runNumIn = new BufferedReader(new InputStreamReader(fileIn));
-            curRunNum = Integer.parseInt(runNumIn.readLine());//read run number
-
-            String runNum = String.format("%04d", curRunNum);//convert to string as file name
+            String curTime = Time.getCurTime();//get start time
+            text_start_time.setText(curTime);//show start time in text field
+            text_stop_time.setText("");
+            activeTimer = Time.activeTimeShow(text_active_time);
 
             //create result file and log file
-            store.createStoreFile("./daqFile/result/RUN" + runNum + "-RunData.dat");
+            String runNum = String.format("%04d", curRunNum);//convert to string as file name
+            store.setFileName("./daqFile/result/RUN" + runNum + "-RunData.dat");
             runLogFile.createLogFile("./daqFile/log/RUN" + runNum + "-RunSummary.txt");
+            runLogFile.writeContent("Start Time:" + curTime + "\n");//write start time to log file
 
             //send start command to electronics
             OutputStream out = socket.getOutputStream();
@@ -128,23 +142,16 @@ public class BtnVboxController {
             comm[1] = 0x01;
             out.write(comm);
             System.out.println("send start");
-
-            String curTime = Time.getCurTime();//get start time
-            text_start_time.setText(curTime);//show start time in text field
-            runLogFile.writeContent("Start Time:" + curTime + "\n");//write start time to log file
-
-            runNumIn.close();//close buffer
-            fileIn.close();
-
+            
             //start thread
             new Thread(rd).start();
             Thread.sleep(1000);
             new Thread(builder).start();
             Thread.sleep(1000);
             new Thread(store).start();
-
             //change DAQ status
             status = 4;
+            label_control_state.setText("RUNNING");
 
         }else if(status == 1){
             System.out.println("please init ");
@@ -153,7 +160,9 @@ public class BtnVboxController {
         }else{
             System.out.println("illegal op");
         }
+
     }
+
     public void stopEventButton() throws IOException, ParseException {
         if(status == 4){
             //send stop command to electronics
@@ -165,9 +174,8 @@ public class BtnVboxController {
             System.out.println("send stop!");
 
             String curTime = Time.getCurTime();//get stop time
-            String diffTime = Time.getDiffTime(text_start_time.getText(), curTime);
+            activeTimer.cancel();
             text_stop_time.setText(curTime);//show start time in text field
-            text_active_time.setText(diffTime);
             runLogFile.writeContent("Stop Time:" + curTime + "\n");//write stop time to log file
             runLogFile.writeContent("good run");
             runLogFile.close();//close the log file
@@ -185,7 +193,7 @@ public class BtnVboxController {
             runNumOut.write(String.valueOf(curRunNum));
             runNumOut.close();
             fileOut.close();
-
+            label_control_state.setText("CONFIGED");
         }else{
             System.out.println("please start first!!");
         }
@@ -193,6 +201,7 @@ public class BtnVboxController {
     public void unconfigEventButton(){
         if(status == 3){
             status = 2;
+            label_control_state.setText("INITIALIZED");
         }else{
             System.out.println("illegal op");
         }
@@ -201,6 +210,7 @@ public class BtnVboxController {
         if(status == 2){
             status = 1;
             socket.close();
+            label_control_state.setText("WAITTING");
         }else{
             System.out.println("illegal op");
         }

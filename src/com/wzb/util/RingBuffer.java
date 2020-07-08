@@ -1,4 +1,4 @@
-package com.wzb.helper;
+package com.wzb.util;
 
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantReadWriteLock;

@@ -1,6 +1,6 @@
 package com.wzb.service;
 
-import com.wzb.helper.RingBuffer;
+import com.wzb.util.RingBuffer;
 
 public class Builder implements Runnable{
     private RingBuffer curBuffer;

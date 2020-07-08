@@ -19,7 +19,7 @@ public class Main extends Application {
         Scene scene = new Scene(root, 500, 400);
         BtnVboxController controller = fxmlLoader.getController();//获取controller实例对象
 
-        controller.setStatus(1);
+       // controller.setStatus(1);
         primaryStage.setScene(scene);
         primaryStage.setTitle("DAQ");
         primaryStage.setOnCloseRequest(new EventHandler<WindowEvent>() {

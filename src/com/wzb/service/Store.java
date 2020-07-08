@@ -1,18 +1,13 @@
 package com.wzb.service;
 
-import com.wzb.helper.RingBuffer;
-import javafx.stage.Stage;
+import com.wzb.util.RingBuffer;
 
 import java.io.File;
 import java.io.FileOutputStream;
-import java.io.IOException;
-import java.text.SimpleDateFormat;
-import java.util.Date;
-import java.util.SimpleTimeZone;
 
 public class Store implements Runnable{
     private RingBuffer curBuffer;
-    private FileOutputStream storeFile;
+    private String fileName;
 
     public volatile boolean exit = false;
 
@@ -20,19 +15,19 @@ public class Store implements Runnable{
         this.curBuffer = curBuffer;
     }
 
-    public void createStoreFile(String fileName) throws IOException {
-        System.out.println("store filename:" + fileName);
-        File sFile = new File(fileName);
-        if(!sFile.exists()){
-            sFile.createNewFile();
-        }
-        storeFile = new FileOutputStream(sFile);
+    public void setFileName(String fileName) {
+        this.fileName = fileName;
     }
 
     public void run() {
         try {
-
             System.out.println("Store module working......");
+            System.out.println("store filename:" + fileName);
+            File sFile = new File(fileName);
+            if(!sFile.exists()){
+                sFile.createNewFile();
+            }
+            FileOutputStream storeFile = new FileOutputStream(sFile);
             byte[] data = new byte[100];
             int length = 0;
             while((length = curBuffer.read(data,0,100, "store") )!= -1){
