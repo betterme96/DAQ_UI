@@ -71,13 +71,13 @@ public class BtnVboxController {
 
     public void initEventButton() throws IOException {
         if(status == 1){
-            socket = new Socket("127.0.0.1", 8000);
+            socket = new Socket("172.17.1.165", 8000);
 
             //init ringbuffer
             RingBuffer[] ringBuffers = new RingBuffer[3];
             int time = 3;
             for(int i = 0; i < ringBuffers.length; ++i){
-                ringBuffers[i] = new RingBuffer(1024*3, time);
+                ringBuffers[i] = new RingBuffer(1024*100, time);
                 time *= 2;
             }
 
@@ -114,8 +114,37 @@ public class BtnVboxController {
             config.sendEDConfig();
             //change DAQ status
             status = 3 ;
-            label_control_state.setText("CONFIGED");
-            //System.out.println("config sunc!! ");
+            label_control_state.setText("CONFIGED");String curTime = Time.getCurTime();//get start time
+            text_start_time.setText(curTime);//show start time in text field
+            text_stop_time.setText("");
+            activeTimer = Time.activeTimeShow(text_active_time);
+
+            //create result file and log file
+            String runNum = String.format("%04d", curRunNum);//convert to string as file name
+            store.setFileName("./daqFile/result/RUN" + runNum + "-RunData.dat");
+            runLogFile.createLogFile("./daqFile/log/RUN" + runNum + "-RunSummary.txt");
+            runLogFile.writeContent("Start Time:" + curTime + "\n");//write start time to log file
+
+            /*
+            //send start command to electronics
+            OutputStream out = socket.getOutputStream();
+            byte[] comm = new byte[2];
+            comm[0] = 0x00;
+            comm[1] = 0x01;
+            out.write(comm);
+            System.out.println("send start");
+
+             */
+
+            //start thread
+            new Thread(rd).start();
+            // Thread.sleep(1000);
+            new Thread(builder).start();
+            //Thread.sleep(1000);
+            new Thread(store).start();
+            //change DAQ status
+            status = 4;
+            label_control_state.setText("RUNNING");
         }else if(status == 1){
             System.out.println("please init first");
         }else{
@@ -135,6 +164,7 @@ public class BtnVboxController {
             runLogFile.createLogFile("./daqFile/log/RUN" + runNum + "-RunSummary.txt");
             runLogFile.writeContent("Start Time:" + curTime + "\n");//write start time to log file
 
+            /*
             //send start command to electronics
             OutputStream out = socket.getOutputStream();
             byte[] comm = new byte[2];
@@ -142,12 +172,14 @@ public class BtnVboxController {
             comm[1] = 0x01;
             out.write(comm);
             System.out.println("send start");
+
+             */
             
             //start thread
             new Thread(rd).start();
-            Thread.sleep(1000);
+           // Thread.sleep(1000);
             new Thread(builder).start();
-            Thread.sleep(1000);
+            //Thread.sleep(1000);
             new Thread(store).start();
             //change DAQ status
             status = 4;
@@ -201,6 +233,9 @@ public class BtnVboxController {
     public void unconfigEventButton(){
         if(status == 3){
             status = 2;
+            rd.exit = false;
+            builder.exit = false;
+            store.exit = false;
             label_control_state.setText("INITIALIZED");
         }else{
             System.out.println("illegal op");

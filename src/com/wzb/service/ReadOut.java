@@ -19,22 +19,30 @@ public class ReadOut implements Runnable{
 
     public void run() {
         try{
+
             System.out.println("Readout module working......");
             InputStream in = dataSocket.getInputStream();
 
-            byte[] data = new byte[100];
+            byte[] data = new byte[1024*10];
             int length = 0;
+            long total = 0;
             while((length = in.read(data)) != -1){
+                System.out.println("socket in len:" + length);
+                if(exit){
+                    curBuffer.write(data, 0,length, "ReadOut");
+                    System.out.println("socket in len:" + length);
+                    total += length;
+                    break;
+                }
                 //System.out.println("----readout write----");
                 int write = curBuffer.write(data, 0,length, "ReadOut");
+                total += length;
                 if(write == -1){
                     break;
                 }
             }
             System.out.println("readout suc!");
-            while (!exit){
-                Thread.sleep(1000);
-            }
+            System.out.println("readout len:" + total);
             System.out.println("readout module Thread shutdown!");
         }catch (Exception e){
             e.printStackTrace();

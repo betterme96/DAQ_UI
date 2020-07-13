@@ -28,14 +28,17 @@ public class Store implements Runnable{
                 sFile.createNewFile();
             }
             FileOutputStream storeFile = new FileOutputStream(sFile);
-            byte[] data = new byte[100];
+            byte[] data = new byte[1024*10];
             int length = 0;
-            while((length = curBuffer.read(data,0,100, "store") )!= -1){
+            long total = 0;
+            while((length = curBuffer.read(data,0,data.length, "store") )!= -1){
                 storeFile.write(data, 0, length);
+                total += length;
             }
             storeFile.flush();;
             storeFile.close();
             System.out.println("store suc!!");
+            System.out.println("file len:" + total);
             while (!exit){
                 Thread.sleep(1000);
             }

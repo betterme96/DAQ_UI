@@ -17,16 +17,19 @@ public class Builder implements Runnable{
         try{
             System.out.println("Builder module working......");
 
-            byte[] data = new byte[100];
+            byte[] data = new byte[1024*10];
             int length = 0;
-            while ((length = curBuffer.read(data, 0, 100,"builder")) != -1){
+            long total = 0;
+            while ((length = curBuffer.read(data, 0, data.length,"builder")) != -1){
                 //System.out.println("----builder read----");
                 int write = handleData(data,length);
+                total += length;
                 if(write == -1) {
                     break;
                 }
             }
             System.out.println("build data suc!!");
+            System.out.println("build data len:" + total);
             while (!exit){
                 Thread.sleep(1000);
             }
@@ -42,7 +45,7 @@ public class Builder implements Runnable{
         check data
          */
         //if data meet the conditions, write to next buffer
-        return nextBuffer.write(data,0,length, "Builder module");
+        return nextBuffer.write(data,0,length, "Builder");
         //System.out.println("----builder write----");
 
     }
