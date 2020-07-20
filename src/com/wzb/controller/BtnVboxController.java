@@ -12,8 +12,11 @@ import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
 
 import java.io.*;
-import java.net.Socket;
+import java.net.*;
 import java.text.ParseException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Timer;
 
 public class BtnVboxController {
@@ -43,6 +46,8 @@ public class BtnVboxController {
     @FXML
     private TextField text_run_number;
 
+    //active time控件
+    Timer activeTimer;
     /*
      * DAQ运行状态
      * waiting：1，等待命令输入
@@ -52,46 +57,66 @@ public class BtnVboxController {
      */
     private int status = 1;
 
+    private Socket dataSocket;//用于接收数据的tcp socket
+    private DatagramSocket commSocket;//用于发送配置的udp socket
+    InetSocketAddress peerAddr;//用于发送udp数据包的目标地址
+
     //各个模块
-    private Socket socket;
     private Config config;
     private ReadOut rd;
     private Builder builder;
     private Store store;
 
-    //log文件
-    private WriteLog runLogFile;
+    private WriteLog runLogFile;//保存run信息的log文件
 
-    //run number文件
-    private File runNumFile;
-    private int curRunNum;
+    private File runNumFile;//保存run number的文件
+    private int curRunNum;//当前可用run number
 
-    //active time控件
-    Timer activeTimer;
+    private List<String> configs;
+
+    private static final String DEST_IP = "192.168.0.10";//电子学ip
+    private static final int TCP_DEST_PORT = 8000;//电子学发送数据端口
+    private static final int UDP_DEST_PORT = 8001;//电子学接收数据端口
+    private static final int SRC_PORT = 8000;//本机接收数据端口
+
 
     public void initEventButton() throws IOException {
         if(status == 1){
-            socket = new Socket("172.17.1.165", 8000);
+            try {
+                //初始化用于数据接收的socket
+                dataSocket = new Socket(DEST_IP, TCP_DEST_PORT);
+                //初始化用于发送配置和接收回包的socket
+                commSocket = new DatagramSocket(SRC_PORT);
+                //初始化用于发送配置的电子学socket地址
+                peerAddr = new InetSocketAddress(DEST_IP, UDP_DEST_PORT);
 
-            //init ringbuffer
+            }catch (SocketException e){
+                if(dataSocket == null){
+                    System.out.println("tcp connect fail");
+                }
+            }
+            //初始化configs容器
+            configs = new ArrayList<>();
+            //初始化ringbuffer
             RingBuffer[] ringBuffers = new RingBuffer[3];
-            int time = 3;
+            int time = 2;
             for(int i = 0; i < ringBuffers.length; ++i){
                 ringBuffers[i] = new RingBuffer(1024*100, time);
                 time *= 2;
             }
 
-            //init module
-            rd = new ReadOut(socket, ringBuffers[0]);
+            //初始化各个模块
+            rd = new ReadOut(dataSocket, ringBuffers[0]);
             builder = new Builder(ringBuffers[0], ringBuffers[1]);
             store = new Store(ringBuffers[1]);
-            config = new Config(socket);
+            //config = new Config(dataSocket);
+            config = new Config(commSocket, peerAddr);
 
-            //init file
+            //初始化log文件
             runLogFile = new WriteLog();
-            runNumFile = new File("./daqFile/curRunNumber.txt");
 
-            //get run number
+            //获取当前可用run number
+            runNumFile = new File("./daqFile/curRunNumber.txt");
             FileInputStream fileIn = new FileInputStream(runNumFile);
             BufferedReader runNumIn = new BufferedReader(new InputStreamReader(fileIn));
             curRunNum = Integer.parseInt(runNumIn.readLine());//read run number
@@ -100,7 +125,6 @@ public class BtnVboxController {
 
             //change DAQ status
             status = 2;
-            text_run_number.setText(String.valueOf(curRunNum));
             label_control_state.setText("INITIALIZED");
             System.out.println("init sunc!! ");
         }else{
@@ -111,40 +135,26 @@ public class BtnVboxController {
     public void configEventButton() throws InterruptedException, IOException {
         if(status == 2){
             //send config to electronics
-            config.sendEDConfig();
+            //config.sendEDConfig();
+
+            //获取配置指令
+            FileInputStream configIn = new FileInputStream(new File("./daqFile/config/QXAFS-config.txt"));
+            BufferedReader br = new BufferedReader(new InputStreamReader(configIn));
+            String curLine = "first";
+            while ((curLine = br.readLine()) != null){
+                //System.out.println(curLine);
+                configs.add(curLine);
+            }
+            configIn.close();
+            br.close();
+            //发送配置，通道1和通道2有效
+            config.sendQXAFSConfig(configs, 3);
+
+
             //change DAQ status
             status = 3 ;
-            label_control_state.setText("CONFIGED");String curTime = Time.getCurTime();//get start time
-            text_start_time.setText(curTime);//show start time in text field
-            text_stop_time.setText("");
-            activeTimer = Time.activeTimeShow(text_active_time);
+            label_control_state.setText("CONFIGED");
 
-            //create result file and log file
-            String runNum = String.format("%04d", curRunNum);//convert to string as file name
-            store.setFileName("./daqFile/result/RUN" + runNum + "-RunData.dat");
-            runLogFile.createLogFile("./daqFile/log/RUN" + runNum + "-RunSummary.txt");
-            runLogFile.writeContent("Start Time:" + curTime + "\n");//write start time to log file
-
-            /*
-            //send start command to electronics
-            OutputStream out = socket.getOutputStream();
-            byte[] comm = new byte[2];
-            comm[0] = 0x00;
-            comm[1] = 0x01;
-            out.write(comm);
-            System.out.println("send start");
-
-             */
-
-            //start thread
-            new Thread(rd).start();
-            // Thread.sleep(1000);
-            new Thread(builder).start();
-            //Thread.sleep(1000);
-            new Thread(store).start();
-            //change DAQ status
-            status = 4;
-            label_control_state.setText("RUNNING");
         }else if(status == 1){
             System.out.println("please init first");
         }else{
@@ -157,6 +167,7 @@ public class BtnVboxController {
             text_start_time.setText(curTime);//show start time in text field
             text_stop_time.setText("");
             activeTimer = Time.activeTimeShow(text_active_time);
+            text_run_number.setText(String.valueOf(curRunNum));
 
             //create result file and log file
             String runNum = String.format("%04d", curRunNum);//convert to string as file name
@@ -164,17 +175,10 @@ public class BtnVboxController {
             runLogFile.createLogFile("./daqFile/log/RUN" + runNum + "-RunSummary.txt");
             runLogFile.writeContent("Start Time:" + curTime + "\n");//write start time to log file
 
-            /*
-            //send start command to electronics
-            OutputStream out = socket.getOutputStream();
-            byte[] comm = new byte[2];
-            comm[0] = 0x00;
-            comm[1] = 0x01;
-            out.write(comm);
-            System.out.println("send start");
+            //发送start命令
+            config.sendQXAFSStart();
 
-             */
-            
+
             //start thread
             new Thread(rd).start();
            // Thread.sleep(1000);
@@ -198,7 +202,7 @@ public class BtnVboxController {
     public void stopEventButton() throws IOException, ParseException {
         if(status == 4){
             //send stop command to electronics
-            OutputStream out = socket.getOutputStream();
+            OutputStream out = dataSocket.getOutputStream();
             byte[] comm = new byte[2];
             comm[0] = 0x00;
             comm[1] = 0x11;
@@ -244,7 +248,7 @@ public class BtnVboxController {
     public void uninitEventButton() throws IOException {
         if(status == 2){
             status = 1;
-            socket.close();
+            dataSocket.close();
             label_control_state.setText("WAITTING");
         }else{
             System.out.println("illegal op");

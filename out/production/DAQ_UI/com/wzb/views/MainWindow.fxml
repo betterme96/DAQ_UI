@@ -50,13 +50,13 @@
                   <HBox alignment="TOP_CENTER" prefHeight="100.0" prefWidth="200.0" spacing="10.0">
                      <children>
                         <Label prefHeight="27.0" prefWidth="120.0" text="Run  Start  Time" textAlignment="JUSTIFY" />
-                        <TextField fx:id="text_start_time" alignment="CENTER_RIGHT" editable="false" prefHeight="27.0" prefWidth="185.0" />
+                        <TextField fx:id="text_start_time" alignment="CENTER_RIGHT" editable="false" prefHeight="27.0" prefWidth="185.0" promptText="00:00:00" />
                      </children>
                   </HBox>
                   <HBox alignment="TOP_CENTER" prefHeight="100.0" prefWidth="200.0" spacing="10.0">
                      <children>
                         <Label prefHeight="27.0" prefWidth="120.0" text="Run  Stop  Time" textAlignment="JUSTIFY" />
-                        <TextField fx:id="text_stop_time" alignment="CENTER_RIGHT" editable="false" prefHeight="27.0" prefWidth="185.0" />
+                        <TextField fx:id="text_stop_time" alignment="CENTER_RIGHT" editable="false" prefHeight="27.0" prefWidth="185.0" promptText="00:00:00" />
                      </children>
                   </HBox>
                   <HBox alignment="TOP_CENTER" prefHeight="100.0" prefWidth="200.0" spacing="10.0">

@@ -30,7 +30,7 @@ public class ReadOut implements Runnable{
                 System.out.println("socket in len:" + length);
                 if(exit){
                     curBuffer.write(data, 0,length, "ReadOut");
-                    System.out.println("socket in len:" + length);
+                    //System.out.println("socket in len:" + length);
                     total += length;
                     break;
                 }
