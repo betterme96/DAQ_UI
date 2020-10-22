@@ -12,10 +12,13 @@ public class RingBuffer {
     private int bufferSize;
     private int rbCapacity;
     private int time;
+    /*
     private ReentrantReadWriteLock pReadLock;
     private ReentrantReadWriteLock pWriteLock;
     private AtomicInteger count = new AtomicInteger();
     private AtomicInteger modCount = new AtomicInteger();
+
+     */
 
     public RingBuffer(){
         this.pRead = 0;
@@ -24,8 +27,11 @@ public class RingBuffer {
         this.buffer = new byte[bufferSize];
         this.rbCapacity = bufferSize;
         this.time = 3;
+        /*
         this.pReadLock = new ReentrantReadWriteLock();
         this.pWriteLock = new ReentrantReadWriteLock();
+
+         */
     }
 
     public RingBuffer(int initSize, int time){
@@ -35,8 +41,11 @@ public class RingBuffer {
         this.buffer = new byte[bufferSize];
         this.time=time;
         this.rbCapacity = bufferSize;
+        /*
         this.pReadLock = new ReentrantReadWriteLock();
         this.pWriteLock = new ReentrantReadWriteLock();
+
+         */
     }
 
     public int canRead() {
@@ -52,21 +61,18 @@ public class RingBuffer {
     public int write(byte[]data, int srcpos,int len, String module) throws InterruptedException
     {
         //pWriteLock.writeLock().lock();
-        System.out.println(module + "  writing...");
+        //System.out.println(module + "  writing...");
         try{
             int waitTime = 0;
-            if(len > canWrite()){
-                //System.out.printf("space can write: %d , space need write: %d \n",canWrite(),count);
-            }
             while(len > canWrite()){
-                System.out.printf(module + " space can write: %d , space need write: %d \n",canWrite(),len);
+               // System.out.printf(module + " space can write: %d , space need write: %d \n",canWrite(),len);
                 Thread.sleep(1000);
-                //waitTime++;
+                waitTime++;
                 //sop("read----sleep:"+i);
-               // if(waitTime > 2*time) {
-               //     System.out.println(module + ":Write Over Time");
-               //     return -1;
-               // }
+                if(waitTime > 2*time) {
+                    System.out.println(module + ":Write Over Time");
+                    return -1;
+                }
             }
 
             if (pRead <pWrite) {
@@ -88,18 +94,20 @@ public class RingBuffer {
                 System.arraycopy(data,srcpos,buffer ,pWrite, len);
                 pWrite += len;
             }
+            /*
             count.incrementAndGet();
             modCount.incrementAndGet();
+
+             */
             return len;
         }finally {
+            //System.out.println(module + "  write suc!!");
             //pWriteLock.writeLock().unlock();
         }
     }
 
     public int read(byte[] data,int srcpos ,int count, String module) throws InterruptedException {
         try{
-            //pReadLock.writeLock().lock();
-            System.out.println(module + "  reading...");
             int waitTime = 0;
             while (count > canRead()) {
                 Thread.sleep(1000);
@@ -140,10 +148,7 @@ public class RingBuffer {
                     pRead += count-tailReadCap;
                 }
             }
-            modCount.incrementAndGet();
 
-            //pWriteLock.readLock().unlock();
-            //pReadLock.writeLock().unlock();
             return count;
         }catch (Exception e){
             System.out.print(module);
