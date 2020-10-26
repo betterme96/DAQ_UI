@@ -24,7 +24,7 @@ public class QXAFSConfig implements Config {
     @Override
     public void work(List<String> configs) throws IOException, InterruptedException {
         //发送配置之前，将电子学板上的残留数据读空
-        //TcpReadBeforeConfig(dataIn);
+        TcpReadBeforeConfig(dataIn);
 
         //启动配置发送和配置接收线程
         QXAFSSendConfig commSend = new QXAFSSendConfig(dataOut, configs);
@@ -34,8 +34,9 @@ public class QXAFSConfig implements Config {
         t1.start();
         t2.start();
 
-        while (!commSend.sendSuc){
-            Thread.sleep(100);
+        while (!(commSend.sendSuc && commRecv.done)){
+            System.out.println("wait config");
+            Thread.sleep(1000);
         }
     }
 
@@ -50,20 +51,19 @@ public class QXAFSConfig implements Config {
     }
 
     private void TcpReadBeforeConfig(InputStream dataIn) throws IOException {
-        System.out.println("read before send config");
+        //System.out.println("read before send config");
         byte[] data = new byte[8];
-        int len = 0, total = 0;
+        int len = 0;
+        long total = 0;
         try{
 
             while ((len = dataIn.read(data)) != -1){
-                System.out.println("len:" + len);
-                System.out.println(StringOp.byte2string(data));
                 total += len;
             }
         }catch (SocketTimeoutException e){
             System.out.println("read before send config run time out");
         }finally {
-            System.out.println(total + " bytes data recv before config");
+            System.out.println(total + " bytes recv");
         }
     }
 }
@@ -74,6 +74,7 @@ class QXAFSSendConfig implements Runnable{
 
     public volatile boolean sendSuc = false;
     public volatile boolean recvSuc = false;
+    public volatile boolean recvStart = false;
     public volatile int recvNum = -1;
 
     public QXAFSSendConfig(OutputStream commOut, List<String> configs) throws IOException {
@@ -90,6 +91,9 @@ class QXAFSSendConfig implements Runnable{
             //发送复位指令
             resetSend();
 
+            Thread.sleep(1000);
+
+            recvStart = true;
             //可用配置指令的索引从0开始
             int totalConfigNum = configs.size();
             int curIdx = 0;
@@ -115,6 +119,8 @@ class QXAFSSendConfig implements Runnable{
             this.sendSuc = true;
         } catch (IOException e) {
             e.printStackTrace();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
         }
     }
 
@@ -127,7 +133,7 @@ class QXAFSSendConfig implements Runnable{
         enable[1] = (byte)0x82;
         enable[0] = (byte) 0xaa;
         commOut.write(enable);
-        System.out.println("channel enable");
+       // System.out.println("channel enable");
     }
 
     private void stopSend() throws IOException {
@@ -153,7 +159,7 @@ class QXAFSRecvConfig implements Runnable {
     private InputStream commIn;
     private QXAFSSendConfig commSend;
     private int totalCommSize;
-
+    public volatile boolean done = false;
     public QXAFSRecvConfig(InputStream commIn, QXAFSSendConfig commSend, int totalCommSize){
         this.commIn = commIn;
         this.commSend = commSend;
@@ -164,9 +170,15 @@ class QXAFSRecvConfig implements Runnable {
     public void run() {
         byte[] config = new byte[8];
         int zeroCount = 0;
+        int totalCount = 0;
         while (true){
             try {
+                while (!commSend.recvStart){
+                    Thread.sleep(100);
+                }
+
                 commIn.read(config);
+                totalCount++;
                 //System.out.println("recv config:" + StringOp.byte2string(config));
 
                 commSend.recvNum = getSeq(config);
@@ -176,21 +188,28 @@ class QXAFSRecvConfig implements Runnable {
                     commSend.recvSuc = true;
                 }
 
+
                 if(commSend.recvNum == 0){
                     zeroCount = zeroCount + 1;
                 }
 
                 //System.out.println("zeroCount:" + zeroCount);
-                if(zeroCount == 3){
+                if(zeroCount == 2 && totalCount == totalCommSize+2){
+                    System.out.println("total config count :" + totalCount);
                     break;
                 }
                 //System.out.println("totalSize: " + totalCommSize);
 
             } catch (IOException e) {
+                //System.out.println("read time out");
+                break;
+            } catch (InterruptedException e) {
                 e.printStackTrace();
             }
         }
-        //System.out.println("recv over");
+        System.out.println("recv over");
+        Thread.interrupted();
+        done = true;
     }
 
     private int getSeq(byte[] config) {

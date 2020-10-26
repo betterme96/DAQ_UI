@@ -99,7 +99,7 @@ public class BtnVboxController  implements Initializable {
     private XYChart.Series<Number,Number> xySeries = new XYChart.Series<>();//向其中存放数据
     private NumberAxis xAxis;//x轴
     private NumberAxis yAxis;//y轴
-    private ScheduledExecutorService scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();//用于定时刷新wave
+    private ScheduledExecutorService scheduledExecutorService;//用于定时刷新wave
     private List<double[]> nodes = new ArrayList<>();//用于收集需要加入wave的点
     private int start = 0;//从nodes的start处开始向series加点
 
@@ -129,7 +129,7 @@ public class BtnVboxController  implements Initializable {
     private RingBuffer[] ringBuffers;
 
     //各个模块的实例化对象
-    private Config config;
+    private QXAFSConfig config;
     private QXAFSReadOut rd;
     private QXAFSAnalyse analyse;
     private QXAFSStore store;
@@ -139,6 +139,7 @@ public class BtnVboxController  implements Initializable {
      */
     private String DEST_IP = "192.168.0.10";//电子学ip
     private int DEST_PORT = 8000;//电子学发送数据端口
+    private int BUFF_SIZE = 20*64*1000000;
     private int START = 0;
     private int END = 0;
     private int COUNT = 10;
@@ -162,8 +163,6 @@ public class BtnVboxController  implements Initializable {
 
         //对按钮进行初始化
         initButton();
-
-        //放一个对list的监控线程
     }
 
     private void initTableView() {
@@ -282,9 +281,9 @@ public class BtnVboxController  implements Initializable {
             //初始化ringbuffer
             ringBuffers = new RingBuffer[3];
 
-            int time = 10;//设置ringbuffer的读写超时时间
+            int time = 7;//设置ringbuffer的读写超时时间
             for(int i = 0; i < ringBuffers.length; ++i){
-                ringBuffers[i] = new RingBuffer(20*64*1000000, time);
+                ringBuffers[i] = new RingBuffer(BUFF_SIZE, time);
             }
 
 
@@ -300,8 +299,8 @@ public class BtnVboxController  implements Initializable {
 
 
             //初始化各个模块
-            ConfigFactory cFactory = new QXAFSConfigFactory();
-            config = cFactory.getConfig(commSocket);
+
+            config = new QXAFSConfig(commSocket);
 
             rd = new QXAFSReadOut(dataSocket, ringBuffers[0]);
 
@@ -321,6 +320,7 @@ public class BtnVboxController  implements Initializable {
         }catch (SocketException e){
             if(dataSocket == null){
                 tableData.add(new Information(Time.getCurTime(), "ERROR", "TCP connect fail"));
+                return;
             }
         }
 
@@ -395,7 +395,6 @@ public class BtnVboxController  implements Initializable {
         //发送配置，使能通道
         config.work(configList);
 
-        System.out.println("send config");
         //change DAQ status
         label_control_state.setText("CONFIGED");
         tableData.add(new Information(Time.getCurTime(), "INFO", "config successful"));
@@ -403,6 +402,9 @@ public class BtnVboxController  implements Initializable {
         btn_uninit.setDisable(true);
         btn_start.setDisable(false);
         btn_unconfig.setDisable(false);
+
+
+
     }
 
 
@@ -422,6 +424,10 @@ public class BtnVboxController  implements Initializable {
             return;
         }
 
+
+        Thread.sleep(10000);
+
+
         String curTime = Time.getCurTime();//获取开始时间
 
         //修改界面控件的值
@@ -439,6 +445,7 @@ public class BtnVboxController  implements Initializable {
         store.exit = false;
         store.over = false;
 
+        scheduledExecutorService  = Executors.newSingleThreadScheduledExecutor();
         scheduledExecutorService.scheduleAtFixedRate(()->{
             Platform.runLater(()->{
                 if(analyse.exit == true){
@@ -458,7 +465,7 @@ public class BtnVboxController  implements Initializable {
         //获取保存结果文件的文件名
         //destFolderPath是已经存在的文件夹，destFolderPath+curRunName是不存在的文件夹， destFolderPath+curRunName+curRunName是一个还没有加后缀的不存在的文件
         String curRunName = "/RUN" + String.format("%04d", curRunNum) + "-RunData";
-        String curRunLogName = "/RUN" + String.format("%04d", curRunNum) + "RunSummary.txt";
+        String curRunLogName = "/RUN" + String.format("%04d", curRunNum) + "-RunSummary.txt";
         String destFilePath = destFolderPath.getText() + curRunName + curRunName;
         //System.out.println(destFilePath);
 
@@ -468,12 +475,12 @@ public class BtnVboxController  implements Initializable {
         store.setAnalyseDataFile(destFilePath);
 
         runLogFile.createLogFile(destFolderPath.getText() + curRunName + curRunLogName);
+        runLogFile.writeContent("Config File:" + configFile.getName() + "\n");
         runLogFile.writeContent("Start Time:" + curTime + "\n");//write start time to log file
 
 
         //发送start命令
         config.sendStart();
-
         tableData.add(new Information(Time.getCurTime(), "INFO", "Send start command successful"));
 
         threads[0] = new Thread(rd);
@@ -504,8 +511,7 @@ public class BtnVboxController  implements Initializable {
     public void stopEventButton() throws IOException, ParseException {
         String curTime = Time.getCurTime();//get stop time
 
-        //读空之后，关闭画图线程
-        scheduledExecutorService.shutdownNow();//关闭画图线程
+        //System.out.println(scheduledExecutorService.isShutdown());
         Platform.runLater(()->{
             activeTimer.cancel();
             text_stop_time.setText(curTime);//show start time in text field
@@ -514,8 +520,16 @@ public class BtnVboxController  implements Initializable {
 
             //有没有读空
             while (!store.over){
-
+                try {
+                    Thread.sleep(1000);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
             }
+
+            //读空之后，关闭画图线程
+            scheduledExecutorService.shutdownNow();//关闭画图线程
+            
             for(int i = 0; i < 3; ++i){
                 threads[i].interrupt();
             }

@@ -39,7 +39,7 @@ public class QXAFSReadOut implements Runnable{
             byte[] data = new byte[64000000];
 
             int len = 0;
-            while ((len = dataIn.read(data)) != -1){
+            while ((len = dataIn.read(data, 0, data.length)) != -1){
                 //System.out.println("len :" + len);
                 rawDataFile.write(data, 0, len);
                 //如果系统进行stop操作，则要对特定的空包进行判定
@@ -64,7 +64,7 @@ public class QXAFSReadOut implements Runnable{
 
             over = true;
         }catch (SocketTimeoutException e){
-            e.printStackTrace();
+
         }catch (IOException | InterruptedException e){
             e.printStackTrace();
         }

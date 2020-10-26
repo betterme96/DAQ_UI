@@ -9,7 +9,7 @@ public class FileOp {
     public static FileOutputStream createFileOutputStream(String fileName) throws IOException {
         File file = new File(fileName);
         if(!file.getParentFile().exists()){
-            System.out.println(fileName + " not exist");
+            //System.out.println(fileName + " not exist");
             file.getParentFile().mkdir();
             file.createNewFile();
         }
