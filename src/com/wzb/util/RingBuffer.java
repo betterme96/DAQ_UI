@@ -157,5 +157,10 @@ public class RingBuffer {
             return -1;
         }
     }
+
+    public void clear(){
+        this.pRead = 0;
+        this.pWrite = 1;
+    }
 }
 

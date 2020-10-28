@@ -21,8 +21,14 @@ public class QXAFSConfig implements Config {
         this.dataOut = commSocket.getOutputStream();
         this.dataIn = commSocket.getInputStream();
     }
+
     @Override
     public void work(List<String> configs) throws IOException, InterruptedException {
+        //发送复位指令
+        resetSend();
+
+        Thread.sleep(1000);
+
         //发送配置之前，将电子学板上的残留数据读空
         TcpReadBeforeConfig(dataIn);
 
@@ -50,14 +56,23 @@ public class QXAFSConfig implements Config {
         dataOut.write(start);
     }
 
+    private void resetSend() throws IOException {
+        byte[] reset = new byte[8];
+        Arrays.fill(reset, (byte) 0x00);
+        reset[7] = 0x55;
+        reset[1] = (byte)0x81;
+        reset[0] = (byte) 0xaa;
+        dataOut.write(reset);
+    }
+
     private void TcpReadBeforeConfig(InputStream dataIn) throws IOException {
         //System.out.println("read before send config");
-        byte[] data = new byte[8];
+        byte[] data = new byte[16000];
         int len = 0;
         long total = 0;
         try{
-
             while ((len = dataIn.read(data)) != -1){
+                System.out.println("len:" + len);
                 total += len;
             }
         }catch (SocketTimeoutException e){
@@ -87,12 +102,6 @@ class QXAFSSendConfig implements Runnable{
     @Override
     public void run() {
         try {
-
-            //发送复位指令
-            resetSend();
-
-            Thread.sleep(1000);
-
             recvStart = true;
             //可用配置指令的索引从0开始
             int totalConfigNum = configs.size();
@@ -119,8 +128,6 @@ class QXAFSSendConfig implements Runnable{
             this.sendSuc = true;
         } catch (IOException e) {
             e.printStackTrace();
-        } catch (InterruptedException e) {
-            e.printStackTrace();
         }
     }
 
@@ -145,14 +152,6 @@ class QXAFSSendConfig implements Runnable{
         commOut.write(stop);
     }
 
-    private void resetSend() throws IOException {
-        byte[] reset = new byte[8];
-        Arrays.fill(reset, (byte) 0x00);
-        reset[7] = 0x55;
-        reset[1] = (byte)0x81;
-        reset[0] = (byte) 0xaa;
-        commOut.write(reset);
-    }
 }
 
 class QXAFSRecvConfig implements Runnable {

@@ -1,8 +1,8 @@
 package com.wzb.service;
 
-import com.wzb.util.FileOp;
-import com.wzb.util.RingBuffer;
-import com.wzb.util.StringOp;
+import com.wzb.models.Information;
+import com.wzb.util.*;
+import javafx.collections.ObservableList;
 
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -13,35 +13,42 @@ public class QXAFSAnalyse implements Runnable {
     private RingBuffer preBuffer;
     private RingBuffer nextBuffer;
     private String fileName;
-    private PrintWriter computeDataFile;
+    private PrintWriter computeDataFile;//保存计算结果的数据文件
+
+
+    private WriteLog runLogFile;//保存run信息的log文件
+    private ObservableList<Information> tableData;//tableView信息填充
 
     private int fileNo = 1;
     private int freq = 0;//抽样频率
     private int count = 0;//数据压缩比值
     private int start = 0;
     private int end = 0;
-    private int chCount = 0;
+    private int ch1 = 0;
+    private int ch2 = 1;
 
     private List<List<Integer>> adcList = new ArrayList<>();//存放四路ADC数据
     private List<double[]> nodes;
 
-    public volatile  boolean exit = false;
+    public volatile boolean isError = false;
 
     public QXAFSAnalyse(RingBuffer preBuffer, RingBuffer nextBuffer){
         this.preBuffer = preBuffer;
         this.nextBuffer = nextBuffer;
+        for(int i = 0; i < 4; ++i){
+            adcList.add(new ArrayList<>());
+        }
      }
 
-    public void setParam(int start, int end, int count, int freq, int chCount, List<double[]> nodes){
+    public void setParam(int start, int end, int count, int freq, int ch1, int ch2, List<double[]> nodes){
         this.start = start;
         this.end = end;
         this.count = count;
         this.freq = freq;
-        this.chCount = chCount;
+        this.ch1 = ch1;
+        this.ch2 = ch2;
         this.nodes = nodes;
-        for(int i = 0; i < chCount; ++i){
-            adcList.add(new ArrayList<>());
-        }
+        //System.out.println("adcList.size():" + adcList.size());
     }
 
     public void setComputeDataFile(String fileName) throws IOException {
@@ -49,10 +56,24 @@ public class QXAFSAnalyse implements Runnable {
         this.computeDataFile = new PrintWriter(FileOp.createFileOutputStream(fileName+"_"+fileNo + ".txt"));
     }
 
+    public void setLogFile(WriteLog runLogFile){
+        this.runLogFile = runLogFile;
+    }
+
+    public void setTableData(ObservableList<Information> tableData){
+        this.tableData = tableData;
+    }
     @Override
     public void run() {
-        System.out.println("Analyse module working......");
-        check();
+        try {
+            runLogFile.writeContent(Time.getCurTime());
+            runLogFile.writeContent("   Analyse module start work\n");
+            //tableData.add(new Information(Time.getCurTime(), "INFO", "Analyse module working....." ));
+            System.out.println("Analyse module working......");
+            check();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
         //uncheck();
     }
 
@@ -84,6 +105,7 @@ public class QXAFSAnalyse implements Runnable {
             int time = 0;
 
             try {
+                //System.out.println("analyse module ch1:" + ch1 + "  ch2:" + ch2);
                 computeDataFile.println("pulse adc1 adc2 absorption");
                 while(preBuffer.read(curData, 0, 4, "Analyse Module") !=-1){
                     //System.out.println(StringOp.byte2string(curData));
@@ -93,10 +115,13 @@ public class QXAFSAnalyse implements Runnable {
                     analyseData.delete(0, analyseData.length());
 
                     if(curData[0] == (byte) 0xff){
-                        if(!isEmpty(adcList)){
+                        //System.out.println("head");
+                        if(!isEmpty(adcList, ch1, ch2)){
+                            //System.out.println("----");
                             //目前只有通道1和通道2有数据，并且只有如何计算这两个通道的算法
-                            avg1 = getAvg(adcList.get(0));
-                            avg2 = getAvg(adcList.get(1));
+                            avg1 = getAvg(adcList.get(ch1));
+                            avg2 = getAvg(adcList.get(ch2));
+                            //System.out.println("adc1:" + avg1 + " adc2:" + avg2);
                             res = Math.log(avg1/avg2);
                             //res = avg1;
                             computData.append(pulse + " " + avg1 + " " + avg2 + " " + res);
@@ -116,9 +141,9 @@ public class QXAFSAnalyse implements Runnable {
                         if(predirect != 0 && predirect != direct){
                             //System.out.println("pre:" + predirect + "  cur:" + direct);
                             //当前数据写入
-                            if(!isEmpty(adcList)){
-                                avg1 = getAvg(adcList.get(0));
-                                avg2 = getAvg(adcList.get(1));
+                            if(!isEmpty(adcList, ch1, ch2)){
+                                avg1 = getAvg(adcList.get(ch1));
+                                avg2 = getAvg(adcList.get(ch2));
                                 res = Math.log(avg1/avg2);
                                 //res = avg1;
                                 computData.append(pulse + " " + avg1 + " " + avg2 + " " + res);
@@ -137,8 +162,13 @@ public class QXAFSAnalyse implements Runnable {
                         channel = curData[0] & 0xf;
 
                         adc = ((curData[1] & 0xff) << 16) | ((curData[2] & 0xff) << 8) | (curData[3] & 0xff);
-                        //System.out.println(channel);
-                        adcList.get(channel-3).add(adc);
+                        //System.out.println("channel : " + channel);
+                        if(channel < 1 || channel > 4){
+                            isError = true;
+                            tableData.add(new Information(Time.getCurTime(), "ERROR", "Data Recv Wrong!!"));
+                            return;
+                        }
+                        adcList.get(channel-1).add(adc);
 
                         if(channel == 1){//可替换成选中的通道中的最小通道号
                             analyseData.append(pulse + " "+ adc + " ");
@@ -150,10 +180,10 @@ public class QXAFSAnalyse implements Runnable {
                     nextData = analyseData.toString().getBytes();
                     nextBuffer.write(nextData, 0, nextData.length, "Analyse Module");
                 }
-                if(!isEmpty(adcList)){
+                if(!isEmpty(adcList,ch1, ch2)){
                     //目前只有通道1和通道2有数据，并且只有如何计算这两个通道的算法
-                    avg1 = getAvg(adcList.get(0));
-                    avg2 = getAvg(adcList.get(1));
+                    avg1 = getAvg(adcList.get(ch1));
+                    avg2 = getAvg(adcList.get(ch2));
                     res = Math.log(avg1/avg2);
                     //res = avg1;
                     computData.append(pulse + " " + avg1 + " " + avg2 + " " + res);
@@ -166,14 +196,18 @@ public class QXAFSAnalyse implements Runnable {
                     clear(adcList);
                 }
                 System.out.println("count:" + pointCount);
+                runLogFile.writeContent(Time.getCurTime());
+                runLogFile.writeContent("   Analyse module stop work\n");
+                tableData.add(new Information(Time.getCurTime(), "INFO", "Analyse module stop work"));
                 computeDataFile.flush();
                 computeDataFile.close();
-                this.exit = true;
 
             } catch (InterruptedException e) {
                 e.printStackTrace();
+                isError = true;
             } catch (IOException e) {
                 e.printStackTrace();
+                isError = true;
             }
     }
 
@@ -192,11 +226,9 @@ public class QXAFSAnalyse implements Runnable {
         return (double)(sum/len);
     }
 
-    private boolean isEmpty(List<List<Integer>> adcList) {
-        for(int i = 0; i < adcList.size(); ++i){
-            if(adcList.get(i).size()==0){
-                return true;
-            }
+    private boolean isEmpty(List<List<Integer>> adcList, int ch1, int ch2) {
+        if(adcList.get(ch1).size() == 0 || adcList.get(ch2).size() == 0){
+            return true;
         }
         return false;
     }
